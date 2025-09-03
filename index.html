@@ -84,7 +84,11 @@
       <div class="d-flex gap-2">
   <button id="exportBtn" class="btn btn-success btn-sm" type="button">Export PDF</button>
   <button id="clearAllBtn" class="btn btn-danger btn-sm" type="button">Clear All Entries</button>
+  <button id="saveFileBtn" class="btn btn-primary btn-sm" type="button">Save Calendar</button>
+  <input type="file" id="loadFileInput" class="d-none" accept=".json">
+  <button id="loadFileBtn" class="btn btn-secondary btn-sm" type="button">Load Calendar</button>
 </div>
+
 
     </div>
 
@@ -121,6 +125,7 @@
         </div>
       </form>
     </div>
+    
   </div>
 
   <!-- Bootstrap JS + Popper -->
@@ -231,6 +236,50 @@
     });
 
     buildCalendar();
+
+    const saveFileBtn = document.getElementById('saveFileBtn');
+const loadFileBtn = document.getElementById('loadFileBtn');
+const loadFileInput = document.getElementById('loadFileInput');
+
+// Save all entries as JSON file
+saveFileBtn.addEventListener('click', () => {
+  const data = {};
+  for (let d = 1; d <= DAYS_IN_MONTH; d++) {
+    const entry = loadEntry(d);
+    if (entry) data[d] = entry;
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = "december-2025-calendar.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// Trigger hidden file input
+loadFileBtn.addEventListener('click', () => loadFileInput.click());
+
+// Load JSON file and restore entries
+loadFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const data = JSON.parse(event.target.result);
+      for (let d = 1; d <= DAYS_IN_MONTH; d++) {
+        saveEntry(d, data[d] || '');
+        renderDay(d);
+      }
+      alert("Calendar loaded successfully!");
+    } catch (err) {
+      alert("Invalid JSON file.");
+    }
+  };
+  reader.readAsText(file);
+});
+
   </script>
 </body>
 </html>
