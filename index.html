@@ -17,9 +17,8 @@
       background: #ffffff;
       border: 1px solid rgba(0,0,0,.1);
       border-radius: .75rem;
-      padding: .5rem .5rem 2.25rem .5rem;
+      padding: .5rem;
       position: relative;
-      cursor: pointer;
     }
     .day-number {
       font-weight: 700;
@@ -36,12 +35,6 @@
     .empty {
       background: #f8f9fa;
       border-style: dashed;
-      cursor: default;
-    }
-    .edit-badge {
-      position: absolute;
-      right: .5rem;
-      bottom: .5rem;
     }
     .weekday-header {
       font-weight: 600;
@@ -73,17 +66,19 @@
 </head>
 <body class="bg-light">
   <div class="container py-4">
-    <div class="d-flex align-items-center justify-content-between mb-3">
+    <!-- Centered Heading -->
+    <div class="d-flex justify-content-center mb-3">
       <h2 style="font-family: 'Comic Sans MS', cursive; font-style: italic; font-size: larger;">
         Buzz & Fizz's Christmas Movie Calendar 2025!
       </h2>
     </div>
-    <div class="d-flex gap-2">
+
+    <!-- Export & Ideas Buttons -->
+    <div class="d-flex justify-content-center gap-2 mb-3">
       <button id="exportBtn" class="btn btn-success btn-sm" type="button">Export PDF</button>
-      <button id="clearAllBtn" class="btn btn-danger btn-sm" type="button">Clear All Entries</button>
-      <button id="saveFileBtn" class="btn btn-primary btn-sm" type="button">Save Calendar</button>
-      <input type="file" id="loadFileInput" class="d-none" accept=".json">
-      <button id="loadFileBtn" class="btn btn-secondary btn-sm" type="button">Load Calendar</button>
+      <button id="ideasBtn" class="btn btn-warning btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#ideasModal">
+        💡 Send an idea!
+      </button>
     </div>
 
     <!-- Weekday headers -->
@@ -101,23 +96,22 @@
     <div id="calendar" class="calendar"></div>
   </div>
 
-  <!-- Modal -->
-  <div class="modal fade" id="entryModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <form id="entryForm" class="modal-content">
+  <!-- Ideas Modal -->
+  <div class="modal fade" id="ideasModal" tabindex="-1" aria-labelledby="ideasModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Edit Entry</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <h5 class="modal-title" id="ideasModalLabel">Send Us Your Idea!</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div id="modalDay" class="mb-2 text-muted small"></div>
-          <textarea id="entryText" class="form-control" rows="6" placeholder="Write your entry…"></textarea>
+          <textarea id="ideaText" class="form-control" rows="5" placeholder="Write your idea here..."></textarea>
         </div>
         <div class="modal-footer">
-          <button type="button" id="deleteEntryBtn" class="btn btn-outline-danger">Delete</button>
-          <button type="submit" class="btn btn-primary">Save Entry</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button id="sendIdeaBtn" type="button" class="btn btn-primary">Submit</button>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 
@@ -129,22 +123,24 @@
 
   <script>
     const YEAR = 2025;
-    const MONTH_INDEX = 11; // Dec
+    const MONTH_INDEX = 11; // December
     const DAYS_IN_MONTH = 31;
     const START_WEEKDAY = new Date(YEAR, MONTH_INDEX, 1).getDay() === 0 ? 6 : new Date(YEAR, MONTH_INDEX, 1).getDay() - 1;
-    const STORAGE_KEY_PREFIX = 'dec2025-day-';
 
     const calendarEl = document.getElementById('calendar');
-    const modalEl = document.getElementById('entryModal');
-    const entryModal = new bootstrap.Modal(modalEl);
-    const entryText = document.getElementById('entryText');
-    const modalDay = document.getElementById('modalDay');
-    const entryForm = document.getElementById('entryForm');
-    const deleteEntryBtn = document.getElementById('deleteEntryBtn');
-    const clearAllBtn = document.getElementById('clearAllBtn');
     const exportBtn = document.getElementById('exportBtn');
 
-    let activeDay = null;
+    // 🎄 Pre-fill entries for each day
+    const entries = {
+      1: "Home Alone", 2: "Elf", 3: "The Santa Clause", 4: "Polar Express", 5: "It's a Wonderful Life",
+      6: "How the Grinch Stole Christmas", 7: "Frosty the Snowman", 8: "A Christmas Carol", 9: "Arthur Christmas",
+      10: "Jingle All the Way", 11: "The Holiday", 12: "Muppet Christmas Carol", 13: "Miracle on 34th Street",
+      14: "Christmas with the Kranks", 15: "Love Actually", 16: "Klaus", 17: "Charlie Brown Christmas",
+      18: "Scrooged", 19: "White Christmas", 20: "Jack Frost", 21: "Noelle", 22: "Deck the Halls",
+      23: "The Christmas Chronicles", 24: "The Night Before", 25: "Violent Night",
+      26: "National Lampoon's Christmas Vacation 🎅", 27: "Happiest Season", 28: "Christmas in Connecticut",
+      29: "Holiday Inn", 30: "Four Christmases", 31: "New Year's Eve 🎉"
+    };
 
     function buildCalendar() {
       calendarEl.innerHTML = '';
@@ -154,79 +150,21 @@
         calendarEl.appendChild(empty);
       }
       for (let day = 1; day <= DAYS_IN_MONTH; day++) {
-        const cell = document.createElement('button');
-        cell.type = 'button';
+        const cell = document.createElement('div');
         cell.className = 'day text-start';
-        cell.dataset.day = day;
         cell.innerHTML = `
           <div class="day-number">${day}</div>
-          <div class="day-content" id="content-${day}">${loadEntry(day)}</div>
-          <span class="badge text-bg-secondary edit-badge">Edit</span>
+          <div class="day-content">${entries[day] || ""}</div>
         `;
-        cell.addEventListener('click', () => openEditor(day));
         calendarEl.appendChild(cell);
       }
     }
 
-    function openEditor(day) {
-      activeDay = day;
-      modalDay.textContent = `December ${day}, ${YEAR}`;
-      entryText.value = loadEntry(day) || '';
-      deleteEntryBtn.classList.toggle('d-none', !entryText.value);
-      entryModal.show();
-    }
-
-    entryForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (activeDay == null) return;
-      saveEntry(activeDay, entryText.value.trim());
-      renderDay(activeDay);
-      entryModal.hide();
-    });
-
-    deleteEntryBtn.addEventListener('click', () => {
-      if (activeDay == null) return;
-      saveEntry(activeDay, '');
-      renderDay(activeDay);
-      entryModal.hide();
-    });
-
-    function loadEntry(day) {
-      return localStorage.getItem(STORAGE_KEY_PREFIX + day) || '';
-    }
-
-    function saveEntry(day, text) {
-      const key = STORAGE_KEY_PREFIX + day;
-      if (text) localStorage.setItem(key, text);
-      else localStorage.removeItem(key);
-    }
-
-    function renderDay(day) {
-      document.getElementById(`content-${day}`).textContent = loadEntry(day);
-    }
-
-    clearAllBtn.addEventListener('click', () => {
-      if (!confirm('Clear all entries?')) return;
-      for (let d = 1; d <= DAYS_IN_MONTH; d++) {
-        localStorage.removeItem(STORAGE_KEY_PREFIX + d);
-        renderDay(d);
-      }
-    });
-
-    // ✅ Updated Export with background image
+    // Export PDF
     exportBtn.addEventListener('click', async () => {
       const { jsPDF } = window.jspdf;
-      document.querySelectorAll('.edit-badge').forEach(el => el.style.display = 'none');
-      
-      const canvas = await html2canvas(document.body, {
-        scale: 2,
-        backgroundColor: null,
-        useCORS: true
-      });
-
+      const canvas = await html2canvas(document.body, { scale: 2, backgroundColor: null, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
-      document.querySelectorAll('.edit-badge').forEach(el => el.style.display = '');
-      
       const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const imgWidth = pageWidth;
@@ -235,47 +173,21 @@
       pdf.save("december-2025-calendar.pdf");
     });
 
-    buildCalendar();
-
-    const saveFileBtn = document.getElementById('saveFileBtn');
-    const loadFileBtn = document.getElementById('loadFileBtn');
-    const loadFileInput = document.getElementById('loadFileInput');
-
-    saveFileBtn.addEventListener('click', () => {
-      const data = {};
-      for (let d = 1; d <= DAYS_IN_MONTH; d++) {
-        const entry = loadEntry(d);
-        if (entry) data[d] = entry;
+    // Ideas Modal Submit → Open Outlook Web
+    document.getElementById('sendIdeaBtn').addEventListener('click', function() {
+      const idea = document.getElementById('ideaText').value.trim();
+      if (!idea) {
+        alert("Please write something before submitting!");
+        return;
       }
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = "december-2025-calendar.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      const email = "paulpj1982@gmail.com";  
+      const subject = encodeURIComponent("New Calendar Idea");
+      const body = encodeURIComponent(idea);
+      const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?to=${email}&subject=${subject}&body=${body}`;
+      window.open(outlookUrl, "_blank");
     });
 
-    loadFileBtn.addEventListener('click', () => loadFileInput.click());
-
-    loadFileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        try {
-          const data = JSON.parse(event.target.result);
-          for (let d = 1; d <= DAYS_IN_MONTH; d++) {
-            saveEntry(d, data[d] || '');
-            renderDay(d);
-          }
-          alert("Calendar loaded successfully!");
-        } catch (err) {
-          alert("Invalid JSON file.");
-        }
-      };
-      reader.readAsText(file);
-    });
+    buildCalendar();
   </script>
 </body>
 </html>
