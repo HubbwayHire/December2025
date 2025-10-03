@@ -19,11 +19,20 @@
       border-radius: .75rem;
       padding: .5rem;
       position: relative;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .day.selected {
+      background-color: #3dd68f !important; /* Bootstrap green */
+      color: #fff;
     }
     .day-number {
       font-weight: 700;
       font-size: .95rem;
       color: #0d6efd;
+    }
+    .day.selected .day-number {
+      color: #fff;
     }
     .day-content {
       margin-top: .35rem;
@@ -35,6 +44,7 @@
     .empty {
       background: #f8f9fa;
       border-style: dashed;
+      cursor: default;
     }
     .weekday-header {
       font-weight: 600;
@@ -66,14 +76,12 @@
 </head>
 <body class="bg-light">
   <div class="container py-4">
-    <!-- Centered Heading -->
     <div class="d-flex justify-content-center mb-3">
       <h2 style="font-family: 'Comic Sans MS', cursive; font-style: italic; font-size: larger;">
         Buzz & Fizz's Christmas Movie Calendar 2025!
       </h2>
     </div>
 
-    <!-- Export & Ideas Buttons -->
     <div class="d-flex justify-content-center gap-2 mb-3">
       <button id="exportBtn" class="btn btn-success btn-sm" type="button">Export PDF</button>
       <button id="ideasBtn" class="btn btn-warning btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#ideasModal">
@@ -81,7 +89,6 @@
       </button>
     </div>
 
-    <!-- Weekday headers -->
     <div class="calendar mb-2">
       <div class="weekday-header">Mon</div>
       <div class="weekday-header">Tue</div>
@@ -92,7 +99,6 @@
       <div class="weekday-header">Sun</div>
     </div>
 
-    <!-- Calendar grid -->
     <div id="calendar" class="calendar"></div>
   </div>
 
@@ -115,22 +121,19 @@
     </div>
   </div>
 
-  <!-- Bootstrap JS + Popper -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- jsPDF and html2canvas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script>
     const YEAR = 2025;
-    const MONTH_INDEX = 11; // December
+    const MONTH_INDEX = 11;
     const DAYS_IN_MONTH = 31;
     const START_WEEKDAY = new Date(YEAR, MONTH_INDEX, 1).getDay() === 0 ? 6 : new Date(YEAR, MONTH_INDEX, 1).getDay() - 1;
 
     const calendarEl = document.getElementById('calendar');
     const exportBtn = document.getElementById('exportBtn');
 
-    // 🎄 Pre-fill entries for each day
     const entries = {
       1: "Home Alone", 2: "Elf", 3: "The Santa Clause", 4: "Polar Express", 5: "It's a Wonderful Life",
       6: "How the Grinch Stole Christmas", 7: "Frosty the Snowman", 8: "A Christmas Carol", 9: "Arthur Christmas",
@@ -143,22 +146,38 @@
     };
 
     function buildCalendar() {
-      calendarEl.innerHTML = '';
-      for (let i = 0; i < START_WEEKDAY; i++) {
-        const empty = document.createElement('div');
-        empty.className = 'day empty';
-        calendarEl.appendChild(empty);
-      }
-      for (let day = 1; day <= DAYS_IN_MONTH; day++) {
-        const cell = document.createElement('div');
-        cell.className = 'day text-start';
-        cell.innerHTML = `
-          <div class="day-number">${day}</div>
-          <div class="day-content">${entries[day] || ""}</div>
-        `;
-        calendarEl.appendChild(cell);
-      }
+  calendarEl.innerHTML = '';
+
+  for (let i = 0; i < START_WEEKDAY; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'day empty';
+    calendarEl.appendChild(empty);
+  }
+
+  for (let day = 1; day <= DAYS_IN_MONTH; day++) {
+    const cell = document.createElement('div');
+    cell.className = 'day text-start';
+    cell.innerHTML = `
+      <div class="day-number">${day}</div>
+      <div class="day-content">${entries[day] || ""}</div>
+    `;
+
+    // Apply saved selection from localStorage
+    const saved = localStorage.getItem(`day-${day}-selected`);
+    if (saved === 'true') {
+      cell.classList.add('selected');
     }
+
+    // Toggle green and save to localStorage
+    cell.addEventListener('click', () => {
+      cell.classList.toggle('selected');
+      localStorage.setItem(`day-${day}-selected`, cell.classList.contains('selected'));
+    });
+
+    calendarEl.appendChild(cell);
+  }
+}
+
 
     // Export PDF
     exportBtn.addEventListener('click', async () => {
